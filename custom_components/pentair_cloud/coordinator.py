@@ -40,6 +40,41 @@ _REFRESH_HORIZON_SEC = 5 * 60
 _LOGGER = logging.getLogger(__name__)
 UPDATE_INTERVAL = 30
 
+# Self-heal: a long-running pycognito/Pentair client can wedge (every poll
+# 401/403s or raises) while the stored tokens are still fine — a manual
+# integration reload always fixes it because setup rebuilds the client from
+# the config entry.  Automate exactly that: after N consecutive update
+# failures, reload the config entry once, bounded by a cooldown so a truly
+# broken account cannot reload-loop.
+_AUTO_RELOAD_MIN_FAILURES = 3
+_AUTO_RELOAD_COOLDOWN_SEC = 3600
+_auto_reload_last: dict[str, float] = {}
+
+
+def _note_update_failure(coordinator) -> None:
+    """Count consecutive failures; trigger a config-entry reload when wedged."""
+    entry_id = coordinator.config_entry.entry_id
+    coordinator._consecutive_failures = (
+        getattr(coordinator, "_consecutive_failures", 0) + 1
+    )
+    failures = coordinator._consecutive_failures
+    if failures < _AUTO_RELOAD_MIN_FAILURES:
+        return
+    now = time.monotonic()
+    if now - _auto_reload_last.get(entry_id, 0.0) < _AUTO_RELOAD_COOLDOWN_SEC:
+        return
+    _auto_reload_last[entry_id] = now
+    _LOGGER.warning(
+        "Pentair update failed %s consecutive times — auto-reloading config entry "
+        "%s to rebuild the client (next auto-reload in %ss)",
+        failures,
+        entry_id,
+        _AUTO_RELOAD_COOLDOWN_SEC,
+    )
+    coordinator.hass.async_create_task(
+        coordinator.hass.config_entries.async_reload(entry_id)
+    )
+
 
 def _id_token_ttl(client: Pentair) -> int:
     """Seconds remaining on the cached id_token; 0 if absent / unparseable."""
@@ -103,6 +138,7 @@ class PentairDataUpdateCoordinator(DataUpdateCoordinator):
         self.api = client
         self.devices: dict[str, list[dict[str, Any]]] = {}
         self.device_coordinators: list[PentairDeviceDataUpdateCoordinator] = []
+        self._consecutive_failures = 0
 
         super().__init__(
             hass,
@@ -146,8 +182,10 @@ class PentairDataUpdateCoordinator(DataUpdateCoordinator):
                 )
                 _LOGGER.debug("Devices updated: %s", diff if diff else "no changes")
                 self.devices = devices
+                self._consecutive_failures = 0
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Unknown exception while updating Pentair data: %s", err)
+            _note_update_failure(self)
             raise UpdateFailed(err) from err
         return self.devices
 
@@ -165,6 +203,7 @@ class PentairDeviceDataUpdateCoordinator(DataUpdateCoordinator):
         """Initialize."""
         self.api = client
         self.device_id = device_id
+        self._consecutive_failures = 0
 
         super().__init__(
             hass,
@@ -210,9 +249,11 @@ class PentairDeviceDataUpdateCoordinator(DataUpdateCoordinator):
                     self.device_id,
                     diff if diff else "no changes",
                 )
+                self._consecutive_failures = 0
                 return device
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Unknown exception while updating Pentair data: %s", err)
+            _note_update_failure(self)
             raise UpdateFailed(err) from err
         else:
             return None

@@ -17,6 +17,34 @@
 
 # Pentair Home for Home Assistant
 
+## 🍴 Maintained fork notice
+
+This is a **maintained fork** of [natekspencer/hacs-pentair](https://github.com/natekspencer/hacs-pentair)
+run from this repository. It tracks upstream and carries fixes/features upstream
+has not merged:
+
+- **Color Sync (PLC1) control entities** — `switch` / `select` / `button`
+  platforms for Pentair Color Sync light controllers (on/off, 12 scenes,
+  Hold/Recall), merged from CZX6's fork. Upstream tracked this as issue #26
+  (closed stale, not merged).
+- **Cognito token-refresh hardening** — proactive + reactive refresh layer in
+  `coordinator.py` that fixes the `403 — security token expired` failure after
+  ~1h of uptime (also from the CZX6 fork lineage).
+- **Wrapped-field unwrap fix** — upstream PR #31, required for
+  `pypentair==0.4.3` (fields arrive as `{"value": ...}` dicts).
+- **Self-heal watchdog** — if the coordinator fails N consecutive updates, the
+  config entry is reloaded automatically (cooldown 1h), mirroring the manual
+  "reload fixes it" recovery for the ~24h wedge.
+- **Dependency pin updated** to `pypentair==0.4.3`.
+
+### Install via HACS
+
+1. HACS → ⋮ → **Custom repositories**
+2. Add `https://github.com/shad0wca7/hacs-pentair` as **Integration**
+3. Search **Pentair Home** → **DOWNLOAD**
+4. Restart Home Assistant
+
+
 Home Assistant integration for Pentair Home devices.
 
 ## 🌊 Supported devices
