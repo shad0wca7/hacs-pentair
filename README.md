@@ -19,6 +19,40 @@
 
 Home Assistant integration for Pentair Home devices.
 
+## 🌊 Supported devices
+
+The integration auto-discovers every device on your Pentair Home account and exposes the underlying telemetry as `sensor` / `binary_sensor` entities for diagnostics.  On top of that, the device types below get first-class **control** entities:
+
+### Color Sync (`deviceType: PLC1`, e.g. part **618031** — MicroBrite RGB pool lights)
+
+| Entity | Type | What it does | Backing field |
+|---|---|---|---|
+| Pool lights | `switch` | On / off | `d13` (0/1) |
+| Pool lights mode | `select` | One of 12 scenes: Red, White, Magenta, Green, Blue, SAm, Party, Romance, Caribbean, American, Sunset, Royal | `d1` (0..4, 7..13) |
+| Pool lights hold | `button` | Freezes the current animation on its present color | `d1` = 5 |
+| Pool lights recall | `button` | Resumes the last show that was running before Hold | `d1` = 6 |
+
+> The Color Sync controller is a cloud-only product (no LAN API).  Control happens via Pentair's REST endpoint, signed with the AWS Cognito tokens this integration already maintains.
+
+### IntelliFlo / IntelliCenter and other Pentair devices
+
+Read-only telemetry today — `switch` / `select` / `button` platforms are scoped to PLC1, but the platform files use device-type lookup tables so adding more device families is just a matter of describing the right fields.
+
+## 🍴 Fork notice — installing this build
+
+This repository is a fork of [natekspencer/hacs-pentair](https://github.com/natekspencer/hacs-pentair) that adds **Color Sync (PLC1) control entities** (the switch / select / button platforms above).  The change is open upstream as [PR #26](https://github.com/natekspencer/hacs-pentair/pull/26); pending merge, install this fork directly:
+
+1. In Home Assistant, open **HACS**
+2. Click the vertical ellipsis (⋮) → **Custom repositories**
+3. Enter `CZX6/hacs-pentair` in the _Repository_ field and select `Integration` in the _Type_ dropdown
+4. Click **ADD**
+5. Search for `Pentair Home` and **DOWNLOAD**
+6. Restart Home Assistant
+
+Already running upstream `natekspencer/hacs-pentair`?  Remove that integration first (Settings → Devices & services → Pentair Home → ⋮ → Delete) to avoid a duplicate domain registration, then install this fork via the steps above and re-add the integration.
+
+> **What's bundled beyond upstream:** the new Color Sync platforms, plus a proactive + reactive Cognito token-refresh layer in `coordinator.py` that fixes the `403 — The security token included in the request is expired` failure mode the upstream integration hits after ~1 hour of uptime.  See PR #26 for the full rationale.
+
 <!-- BEGIN AUTO-GENERATED INSTALLATION -->
 
 ## ⬇️ Installation

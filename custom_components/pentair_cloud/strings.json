@@ -43,6 +43,16 @@
       "last_report": { "name": "Last report" },
       "motor_speed": { "name": "Motor speed" },
       "salt_level": { "name": "Salt level" }
+    },
+    "switch": {
+      "pool_lights": { "name": "Pool lights" }
+    },
+    "select": {
+      "pool_lights_mode": { "name": "Pool lights mode" }
+    },
+    "button": {
+      "pool_lights_hold": { "name": "Hold" },
+      "pool_lights_recall": { "name": "Recall" }
     }
   }
 }
