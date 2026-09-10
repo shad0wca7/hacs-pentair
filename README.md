@@ -1,143 +1,74 @@
-<!-- BEGIN AUTO-GENERATED HEADER -->
-
-[![Release](https://img.shields.io/github/v/release/natekspencer/hacs-pentair?style=for-the-badge)](https://github.com/natekspencer/hacs-pentair/releases)
-[![HACS Badge](https://img.shields.io/badge/HACS-custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
-[![Buy Me A Coffee/Beer](https://img.shields.io/badge/Buy_Me_A_☕/🍺-F16061?style=for-the-badge&logo=ko-fi&logoColor=white&labelColor=grey)](https://ko-fi.com/natekspencer)
-[![Sponsor on GitHub](https://img.shields.io/badge/Sponsor_💜-6f42c1?style=for-the-badge&logo=github&logoColor=white&labelColor=grey)](https://github.com/sponsors/natekspencer)
-
-![Downloads](https://img.shields.io/github/downloads/natekspencer/hacs-pentair/total?style=flat-square)
-![Latest Downloads](https://img.shields.io/github/downloads/natekspencer/hacs-pentair/latest/total?style=flat-square)
-
-<!-- END AUTO-GENERATED HEADER -->
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://brands.home-assistant.io/pentair_cloud/dark_logo.png">
-  <img alt="Pentair logo" src="https://brands.home-assistant.io/pentair_cloud/logo.png">
-</picture>
-
 # Pentair Home for Home Assistant
 
-## 🍴 Maintained fork notice
+[![Release](https://img.shields.io/github/v/release/shad0wca7/hacs-pentair)](https://github.com/shad0wca7/hacs-pentair/releases)
+[![Validation](https://github.com/shad0wca7/hacs-pentair/actions/workflows/validate.yaml/badge.svg)](https://github.com/shad0wca7/hacs-pentair/actions/workflows/validate.yaml)
+[![HACS custom](https://img.shields.io/badge/HACS-custom-41BDF5)](https://hacs.xyz/)
 
-This is a **maintained fork** of [natekspencer/hacs-pentair](https://github.com/natekspencer/hacs-pentair)
-run from this repository. It tracks upstream and carries fixes/features upstream
-has not merged:
+A maintained fork of [natekspencer/hacs-pentair](https://github.com/natekspencer/hacs-pentair), with Color Sync (PLC1) controls derived from [CZX6's work](https://github.com/CZX6/hacs-pentair). This integration uses the **Pentair Home cloud API**; internet access and a Pentair Home account are required. It does not implement local/LAN control.
 
-- **Color Sync (PLC1) control entities** — `switch` / `select` / `button`
-  platforms for Pentair Color Sync light controllers (on/off, 12 scenes,
-  Hold/Recall), merged from CZX6's fork. Upstream tracked this as issue #26
-  (closed stale, not merged).
-- **Cognito token-refresh hardening** — proactive + reactive refresh layer in
-  `coordinator.py` that fixes the `403 — security token expired` failure after
-  ~1h of uptime (also from the CZX6 fork lineage).
-- **Wrapped-field unwrap fix** — upstream PR #31, required for
-  `pypentair==0.4.3` (fields arrive as `{"value": ...}` dicts).
-- **Self-heal watchdog** — if the coordinator fails N consecutive updates, the
-  config entry is reloaded automatically (cooldown 1h), mirroring the manual
-  "reload fixes it" recovery for the ~24h wedge.
-- **Dependency pin updated** to `pypentair==0.4.3`.
+## Install this fork
 
-### Install via HACS
+Requires Home Assistant **2026.1.0 or newer** and HACS.
 
-1. HACS → ⋮ → **Custom repositories**
-2. Add `https://github.com/shad0wca7/hacs-pentair` as **Integration**
-3. Search **Pentair Home** → **DOWNLOAD**
-4. Restart Home Assistant
+1. HACS → menu → **Custom repositories**.
+2. Add **`https://github.com/shad0wca7/hacs-pentair`**, category **Integration**.
+3. Download **Pentair Home** from this repository and restart Home Assistant.
+4. Settings → Devices & services → Add integration → **Pentair Home**, then sign in.
 
+[Open this repository in HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=shad0wca7&repository=hacs-pentair&category=integration)
 
-Home Assistant integration for Pentair Home devices.
+### Updating or switching from another fork
 
-## 🌊 Supported devices
+Back up your configuration first. All these forks use the same `pentair_cloud` domain: only one implementation can be installed. Replace the existing HACS repository selection/component files with this fork, then restart Home Assistant. **Keep the existing Pentair config entry and entity IDs.** Do not delete/re-add the integration merely to update its code: deletion logs the account out and can disrupt existing entities and automations. HACS menu wording varies by version; if it requires removing the old download, preserve the HA config entry.
 
-The integration auto-discovers every device on your Pentair Home account and exposes the underlying telemetry as `sensor` / `binary_sensor` entities for diagnostics.  On top of that, the device types below get first-class **control** entities:
+For manual installation, copy `custom_components/pentair_cloud` into the Home Assistant `custom_components` directory and restart. Manual installs do not receive HACS update notifications.
 
-### Color Sync (`deviceType: PLC1`, e.g. part **618031** — MicroBrite RGB pool lights)
+## Supported controls
 
-| Entity | Type | What it does | Backing field |
-|---|---|---|---|
-| Pool lights | `switch` | On / off | `d13` (0/1) |
-| Pool lights mode | `select` | One of 12 scenes: Red, White, Magenta, Green, Blue, SAm, Party, Romance, Caribbean, American, Sunset, Royal | `d1` (0..4, 7..13) |
-| Pool lights hold | `button` | Freezes the current animation on its present color | `d1` = 5 |
-| Pool lights recall | `button` | Resumes the last show that was running before Hold | `d1` = 6 |
+First-class controls are scoped to **Color Sync (`PLC1`)**, including the 618031 controller used with compatible Pentair color lights. The integration creates a switch; a light entity may also exist if your HA configuration wraps that switch.
 
-> The Color Sync controller is a cloud-only product (no LAN API).  Control happens via Pentair's REST endpoint, signed with the AWS Cognito tokens this integration already maintains.
+| Entity | Function | Cloud field |
+|---|---|---|
+| Switch | Power on/off | `d13`: 0/1 |
+| Select | Red, White, Magenta, Green, Blue, SAm, Party, Romance, Caribbean, American, Sunset, Royal | `d1`: 0–4, 7–13 |
+| Hold button | Sends the controller's Hold command | `d1`: 5 |
+| Recall button | Sends the controller's Recall command | `d1`: 6 |
 
-### IntelliFlo / IntelliCenter and other Pentair devices
+Hold/Recall labels describe controller commands, not a guarantee that Recall resumes an animation. Consult the controller/light manual for physical behavior. Buttons can show `unknown` until first pressed; that is not the same as `unavailable`.
 
-Read-only telemetry today — `switch` / `select` / `button` platforms are scoped to PLC1, but the platform files use device-type lookup tables so adding more device families is just a matter of describing the right fields.
+Other device types may expose inherited sensor/binary-sensor telemetry, but this fork does not promise control support or verified compatibility for every Pentair product. Diagnostic values depend on device-specific cloud field encodings.
 
-## 🍴 Fork notice — installing this build
+## Reliability and authentication
 
-This repository is a fork of [natekspencer/hacs-pentair](https://github.com/natekspencer/hacs-pentair) that adds **Color Sync (PLC1) control entities** (the switch / select / button platforms above).  The change is open upstream as [PR #26](https://github.com/natekspencer/hacs-pentair/pull/26); pending merge, install this fork directly:
+**v1.0.0 has a known hourly authentication defect:** it refreshes Cognito login tokens without reliably replacing expired AWS signing credentials. Its three-failure watchdog can recover by reloading, but does not eliminate outages.
 
-1. In Home Assistant, open **HACS**
-2. Click the vertical ellipsis (⋮) → **Custom repositories**
-3. Enter `CZX6/hacs-pentair` in the _Repository_ field and select `Integration` in the _Type_ dropdown
-4. Click **ADD**
-5. Search for `Pentair Home` and **DOWNLOAD**
-6. Restart Home Assistant
+**v1.0.1** introduces an expiry-aware client adapter for pinned `pypentair==0.4.3`:
 
-Already running upstream `natekspencer/hacs-pentair`?  Remove that integration first (Settings → Devices & services → Pentair Home → ⋮ → Delete) to avoid a duplicate domain registration, then install this fork via the steps above and re-add the integration.
+- Tracks the AWS credential expiration returned by Cognito Identity independently of login-token expiry; refreshes five minutes early.
+- Rebuilds signing credentials when the user token changes and captures request headers only after refresh.
+- Serializes account reads, writes and refreshes to avoid competing signer/token updates.
+- Retries an explicit expired-token response once with rebuilt signing credentials. Ordinary authorization denials and command timeouts are not blindly replayed.
+- Sends revoked-login failures to HA reauthentication.
+- Retains the three-consecutive-failure reload fallback with a one-hour cooldown.
 
-> **What's bundled beyond upstream:** the new Color Sync platforms, plus a proactive + reactive Cognito token-refresh layer in `coordinator.py` that fixes the `403 — The security token included in the request is expired` failure mode the upstream integration hits after ~1 hour of uptime.  See PR #26 for the full rationale.
+Regression tests cover independent credential expiry, token replacement, retry bounds, concurrent requests, revoked login, command acknowledgement and timeouts. Passing tests is not a guarantee of uninterrupted cloud service; deployment must be observed across real expiry cycles. Device connectivity, internet availability and Pentair outages remain separate failure modes.
 
-<!-- BEGIN AUTO-GENERATED INSTALLATION -->
+### Troubleshooting
 
-## ⬇️ Installation
+Check Settings → System → Logs for `pentair_cloud`. An occasional recovery reload is a fallback event; hourly reloads are a fault, not healthy operation. Download integration diagnostics for credential-refresh/retry counters and coordinator health (no credentials or device payloads are included). Reauthenticate when HA requests it; do not repeatedly delete the integration.
 
-### HACS (Recommended)
+Known separate issue: some PLC1 device-time values do not match the upstream decoder, causing conversion errors or implausible dates. Those telemetry values should not be treated as authoritative. This release does not guess a new time encoding or change lighting schedules.
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=natekspencer&repository=hacs-pentair&category=integration)
+Report problems at [this fork's issue tracker](https://github.com/shad0wca7/hacs-pentair/issues), including integration/HA versions and redacted errors. Never post tokens, account credentials, full device payloads or unredacted diagnostics from other integrations.
 
-1. Use the **My Home Assistant** badge above, or from within Home Assistant, click on **HACS**
-2. Click the vertical ellipsis (⋮) → **Custom repositories**
-3. Enter `natekspencer/hacs-pentair` in the _Repository_ field and select `Integration` in the _Type_ dropdown
-4. Click **ADD**
-5. Close the _Custom repositories_ window
-6. Search for `Pentair Home` and click on the appropriate repository
-7. Click **DOWNLOAD**
-8. Restart Home Assistant
+## Development and provenance
 
-### Manual
+Run `python -m pytest -q` after installing `requirements-test.txt`. The tests isolate AWS/HTTP boundaries; they do not contact your account or operate lights.
 
-If you prefer manual installation:
+- Original integration and pypentair: [Nate Spencer](https://github.com/natekspencer).
+- Color Sync controls and earlier token-refresh work: [CZX6](https://github.com/CZX6/hacs-pentair).
+- [Upstream PR #26](https://github.com/natekspencer/hacs-pentair/pull/26) is **closed and unmerged**, not a pending installation path.
+- Wrapped-field compatibility derives from [upstream PR #31](https://github.com/natekspencer/hacs-pentair/pull/31).
+- Fork maintenance and credential-lifecycle repair: [shad0wca7](https://github.com/shad0wca7/hacs-pentair).
 
-1. Download or clone this repository
-2. Copy the `custom_components/pentair_cloud` folder to your Home Assistant `custom_components` directory
-3. Restart Home Assistant
-
-> ⚠️ Manual installation will not provide automatic update notifications. HACS installation is recommended unless you have a specific need.
-
-## ➕ Setup
-
-Once installed, you can set up the integration by clicking on the following badge:
-
-[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=pentair_cloud)
-
-Alternatively:
-
-1. Go to [Settings > Devices & services](https://my.home-assistant.io/redirect/integrations/)
-2. In the bottom-right corner, select **Add integration**
-3. Type `Pentair Home` and select the **Pentair Home** integration
-4. Follow the instructions to add the integration to your Home Assistant
-<!-- END AUTO-GENERATED INSTALLATION -->
-
----
-
-<!-- BEGIN AUTO-GENERATED FOOTER -->
-
-## ❤️ Support Me
-
-I maintain this Home Assistant integration in my spare time. If you find it useful, consider supporting development:
-
-- 💜 [Sponsor me on GitHub](https://github.com/sponsors/natekspencer)
-- ☕ [Buy me a coffee / beer](https://ko-fi.com/natekspencer)
-- 💸 [PayPal (direct support)](https://www.paypal.com/paypalme/natekspencer)
-- ⭐ [Star this project](https://github.com/natekspencer/hacs-pentair)
-- 📦 If you’d like to support in other ways, such as donating hardware for testing, feel free to [reach out to me](https://github.com/natekspencer)
-
-## 📈 Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=natekspencer/hacs-pentair)](https://www.star-history.com/#natekspencer/hacs-pentair)
-
-<!-- END AUTO-GENERATED FOOTER -->
+Original licensing and attribution are retained in [LICENSE](LICENSE). If you wish to support the original author, [Nate's GitHub Sponsors](https://github.com/sponsors/natekspencer) is an **upstream-author** support link, not a donation to this fork's maintainer.
