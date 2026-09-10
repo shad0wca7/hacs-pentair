@@ -7,6 +7,16 @@ on:
     - cron: "0 0 * * *"
 
 jobs:
+  tests:
+    name: Credential lifecycle regression tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - run: pip install -r requirements-test.txt
+      - run: python -m pytest -q
   hassfest:
     name: Validate with hassfest
     runs-on: "ubuntu-latest"

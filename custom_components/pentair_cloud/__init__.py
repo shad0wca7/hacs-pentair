@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from pypentair import Pentair, PentairAuthenticationError
+from pypentair import PentairAuthenticationError
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_ACCESS_TOKEN, CONF_USERNAME, Platform
@@ -13,6 +13,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers.device_registry import DeviceEntry
 
+from .client import Pentair
 from .const import CONF_ID_TOKEN, CONF_REFRESH_TOKEN, DOMAIN
 from .coordinator import (
     PentairDataUpdateCoordinator,
@@ -34,7 +35,7 @@ PLATFORMS = [
 
 async def async_setup_entry(hass: HomeAssistant, entry: PentairConfigEntry) -> bool:
     """Set up Pentair from a config entry."""
-    entry.add_update_listener(update_listener)
+    entry.async_on_unload(entry.add_update_listener(update_listener))
 
     client = Pentair(
         username=entry.data.get(CONF_USERNAME),
@@ -90,7 +91,7 @@ async def async_remove_entry(hass: HomeAssistant, entry: PentairConfigEntry) -> 
     )
     try:
         await hass.async_add_executor_job(client.logout)
-    except Exception:  # noqa: BLE001
+    except Exception:
         _LOGGER.debug("Failed to logout during entry removal", exc_info=True)
 
 
