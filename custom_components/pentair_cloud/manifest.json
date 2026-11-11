@@ -16,7 +16,8 @@
     "botocore"
   ],
   "requirements": [
-    "pypentair==0.4.3"
+    "pypentair==0.4.3",
+    "deepdiff>=6.3.1,<10"
   ],
-  "version": "1.0.1"
+  "version": "v1.0.2"
 }
